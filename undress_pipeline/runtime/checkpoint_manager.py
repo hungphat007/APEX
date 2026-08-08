@@ -44,9 +44,9 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "size_mb": 184.0
     },
     "birefnet": {
-        "filename": "BiRefNet-general-epoch_240.pth",
+        "filename": "BiRefNet.safetensors",
         "repo_id": "ZhengPeng7/BiRefNet",
-        "url": "https://huggingface.co/ZhengPeng7/BiRefNet/resolve/main/BiRefNet-general-epoch_240.pth",
+        "url": "https://huggingface.co/ZhengPeng7/BiRefNet/resolve/main/model.safetensors",
         "description": "BiRefNet High-Resolution Edge Refinement",
         "size_mb": 978.0
     },
