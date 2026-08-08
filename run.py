@@ -50,7 +50,7 @@ def main():
     setup_logging(args.verbose)
 
     print("\n" + "=" * 60)
-    print("       UNDRESS VIDEO PIPELINE v1.0.0 (Phase 4 Ready)")
+    print("       UNDRESS VIDEO PIPELINE v1.0.0 (Production Engine)")
     print("=" * 60)
 
     # 1. Environment Check
@@ -59,28 +59,34 @@ def main():
 
     # 2. Checkpoint Verification
     checkpoint_mgr = CheckpointManager(checkpoint_dir=args.checkpoint_dir)
-    print("\n[Phase 1-4] Verifying Model Weights Registry...")
+    print("\nVerifying Model Weights Registry...")
 
-    missing_models = []
+    missing_mandatory_models = []
+    missing_optional_models = []
+
     for key in MODEL_REGISTRY:
         available = checkpoint_mgr.is_model_available(key)
-        status_str = "PRESENT" if available else "MISSING"
+        is_opt = MODEL_REGISTRY[key].get("optional", False)
+        status_str = "PRESENT" if available else ("MISSING (OPTIONAL)" if is_opt else "MISSING")
         print(f" - {key:<20}: {status_str} ({MODEL_REGISTRY[key]['description']})")
         if not available:
-            missing_models.append(key)
+            if is_opt:
+                missing_optional_models.append(key)
+            else:
+                missing_mandatory_models.append(key)
 
-    if missing_models:
-        print(f"\nFound {len(missing_models)} missing model checkpoint(s).")
+    if missing_mandatory_models:
+        print(f"\nFound {len(missing_mandatory_models)} missing mandatory model checkpoint(s): {missing_mandatory_models}")
         if env_info["is_colab"] or args.download_weights:
-            print("Auto-download trigger condition met. Attempting downloads...")
-            for key in missing_models:
+            print("Auto-download trigger condition met. Attempting downloads for mandatory models...")
+            for key in missing_mandatory_models:
                 checkpoint_mgr.ensure_model(key, force_download=args.download_weights)
         elif args.allow_fallback:
             print("\n[DEMO MODE ACTIVE] --allow-fallback specified. Pipeline will proceed using synthetic mock models.")
         else:
             raise RuntimeError(
-                f"\n[PRODUCTION MODE ERROR] {len(missing_models)} model weights are missing!\n"
-                f"Missing keys: {missing_models}\n\n"
+                f"\n[PRODUCTION MODE ERROR] Mandatory model weights are missing!\n"
+                f"Missing mandatory keys: {missing_mandatory_models}\n\n"
                 f"STRICT LOCAL RULE ENFORCED:\n"
                 f"No automatic weight downloads are performed on local machines.\n"
                 f"To fix:\n"
@@ -89,12 +95,23 @@ def main():
                 f" - Run on Google Colab where auto-downloads execute automatically.\n"
             )
     else:
-        print("\nAll required model checkpoints are available!")
+        print("\nAll mandatory model checkpoints are available!")
+
+    # Process optional models auto-download if on Colab / --download-weights
+    if missing_optional_models and (env_info["is_colab"] or args.download_weights):
+        print(f"Attempting download for optional model(s): {missing_optional_models}...")
+        for key in missing_optional_models:
+            try:
+                checkpoint_mgr.ensure_model(key, force_download=args.download_weights)
+            except Exception as e:
+                print(f"Optional model '{key}' download skipped/failed ({str(e)}). Continuing without optional model.")
 
     # Initialize LoRALoader if LoRA specified
     lora_loader = LoRALoader(max_loras=2)
     if args.lora_path:
         lora_loader.register_lora(Path(args.lora_path), scale=args.lora_scale, name="custom_skin_lora")
+    elif not checkpoint_mgr.is_model_available("skin_body_lora"):
+        print("\n[INFO] No LoRA loaded. Running base Wan only.")
 
     # Initialize Master Undress Video Pipeline
     pipeline = UndressVideoPipeline(
@@ -103,7 +120,7 @@ def main():
         allow_fallback=args.allow_fallback
     )
 
-    print("\n[Phase 4] Executing Master End-to-End Undress Video Pipeline...")
+    print("\nExecuting Master End-to-End Undress Video Pipeline...")
     input_path = Path(args.input)
     output_path = Path(args.output)
 
@@ -115,7 +132,7 @@ def main():
         debug_masks=args.debug_masks
     )
 
-    print("\n[Phase 4 Video Pipeline Execution Complete]")
+    print("\n[Video Pipeline Execution Complete]")
     print(f" Output Video    : {results['output_path']}")
     print(f" Resolution      : {results['width']}x{results['height']}")
     print(f" Frame Rate      : {results['fps']:.2f} FPS")

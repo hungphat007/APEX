@@ -1,6 +1,7 @@
 """
 Phase 5 Unit Tests for Undress Video Pipeline.
-Tests Colab auto-download trigger rules, registry URLs, .gitignore rules, and notebook validity.
+Tests Colab auto-download trigger rules, optional model handling (skin_body_lora),
+registry URLs, .gitignore rules, and notebook validity.
 
 Guarantees ZERO model weight downloads occur during default test execution.
 """
@@ -26,10 +27,11 @@ class TestPhase5(unittest.TestCase):
             self.assertIn("filename", info)
             self.assertIn("description", info)
             self.assertIn("size_mb", info)
+            self.assertIn("optional", info)
             self.assertTrue(info.get("url") or info.get("repo_id"), f"Model '{key}' lacks download URL and repo_id.")
 
-    def test_local_download_prevention(self):
-        """Verify local execution without force_download raises RuntimeError and downloads nothing."""
+    def test_local_download_prevention_mandatory(self):
+        """Verify local execution without force_download raises RuntimeError for MANDATORY models."""
         with tempfile.TemporaryDirectory() as tmpdir:
             mgr = CheckpointManager(checkpoint_dir=Path(tmpdir))
             
@@ -38,6 +40,15 @@ class TestPhase5(unittest.TestCase):
                     mgr.ensure_model("yolo11n", force_download=False, allow_fallback=False)
                 self.assertIn("PRODUCTION MODE ERROR", str(ctx.exception))
                 self.assertIn("STRICT LOCAL RULE ENABLED", str(ctx.exception))
+
+    def test_optional_model_non_blocking(self):
+        """Verify missing optional model (skin_body_lora) returns path without raising RuntimeError."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mgr = CheckpointManager(checkpoint_dir=Path(tmpdir))
+            
+            # Calling ensure_model on optional model skin_body_lora should NOT raise RuntimeError
+            path = mgr.ensure_model("skin_body_lora", force_download=False, allow_fallback=False)
+            self.assertEqual(path, mgr.get_checkpoint_path("skin_body_lora"))
 
     def test_gitignore_rules(self):
         """Verify .gitignore contains patterns for model weights and test outputs."""

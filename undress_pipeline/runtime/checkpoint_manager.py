@@ -4,7 +4,8 @@ Manages model weights registry, verification, and auto-download logic.
 
 STRICT RULE:
 No model downloads happen on local machine unless force_download=True or running on Google Colab.
-Missing weights raise an explicit RuntimeError in Production Mode.
+Missing mandatory weights raise an explicit RuntimeError in Production Mode.
+Optional models (e.g. skin_body_lora) log warnings and NEVER block execution.
 """
 
 import os
@@ -27,56 +28,64 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "repo_id": "ultralytics/yolo11n",
         "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt",
         "description": "YOLO11n Person Detection Model",
-        "size_mb": 5.6
+        "size_mb": 5.6,
+        "optional": False
     },
     "schp_atr": {
         "filename": "schp-atr.pth",
         "repo_id": "zhengchong/Human-Toolkit",
         "url": "https://huggingface.co/zhengchong/Human-Toolkit/resolve/main/SCHP/schp-atr.pth",
         "description": "Self-Correction Human Parsing (ATR-18)",
-        "size_mb": 204.0
+        "size_mb": 204.0,
+        "optional": False
     },
     "sam2_small": {
         "filename": "sam2_hiera_small.pt",
         "repo_id": "facebook/sam2-hiera-small",
         "url": "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt",
         "description": "SAM2 Small Edge Refinement Model",
-        "size_mb": 184.0
+        "size_mb": 184.0,
+        "optional": False
     },
     "birefnet": {
         "filename": "BiRefNet.safetensors",
         "repo_id": "ZhengPeng7/BiRefNet",
         "url": "https://huggingface.co/ZhengPeng7/BiRefNet/resolve/main/model.safetensors",
         "description": "BiRefNet High-Resolution Edge Refinement",
-        "size_mb": 978.0
+        "size_mb": 978.0,
+        "optional": False
     },
     "wan_2.1_vace_1.3b": {
         "filename": "wan2.1_vace_1.3b_inpainting.safetensors",
         "repo_id": "Wan-AI/Wan2.1-VACE-1.3B",
         "url": "https://huggingface.co/Wan-AI/Wan2.1-VACE-1.3B/resolve/main/diffusion_pytorch_model.safetensors",
         "description": "Wan 2.1-VACE-1.3B Masked Inpainting Model",
-        "size_mb": 2800.0
+        "size_mb": 2800.0,
+        "optional": False
     },
     "arcface": {
         "filename": "buffalo_l",
         "repo_id": "deepinsight/insightface",
         "url": "https://github.com/deepinsight/insightface",
         "description": "InsightFace ArcFace Identity Model (buffalo_l)",
-        "size_mb": 250.0
+        "size_mb": 250.0,
+        "optional": False
     },
     "rife": {
         "filename": "rife4.26.pkl",
         "repo_id": "DeepBeepMeep/Wan2.1",
         "url": "https://huggingface.co/DeepBeepMeep/Wan2.1/resolve/main/rife4.26.pkl",
         "description": "RIFE 4.26 Optical Flow Temporal Propagator",
-        "size_mb": 70.0
+        "size_mb": 70.0,
+        "optional": False
     },
     "skin_body_lora": {
         "filename": "wan_skin_body_v1.safetensors",
         "repo_id": "antigravity/wan-skin-body-lora",
         "url": "https://huggingface.co/antigravity/wan-skin-body-lora/resolve/main/wan_skin_body_v1.safetensors",
         "description": "Undress / Skin / Body Detail LoRA",
-        "size_mb": 150.0
+        "size_mb": 150.0,
+        "optional": True
     }
 }
 
@@ -170,25 +179,33 @@ class CheckpointManager:
         Rules:
         - If model exists -> Return path.
         - If missing & (is_colab() OR force_download) -> Auto-download and return path.
+        - If missing & optional model -> Log warning and return path (do NOT raise RuntimeError).
         - If missing & allow_fallback -> Return path (caller will handle synthetic fallback).
-        - If missing & local development -> Raise RuntimeError (Production Mode).
+        - If missing mandatory model & local development -> Raise RuntimeError (Production Mode).
         """
         path = self.get_checkpoint_path(model_key)
         if self.is_model_available(model_key):
             return path
 
+        is_optional = MODEL_REGISTRY.get(model_key, {}).get("optional", False)
         colab_mode = is_colab()
 
         if colab_mode or force_download:
             logger.info(f"Triggering auto-download for missing checkpoint '{model_key}' (Colab={colab_mode}, Force={force_download})")
-            return self.download_model(model_key)
+            try:
+                return self.download_model(model_key)
+            except Exception as e:
+                if is_optional:
+                    logger.warning(f"Optional model '{model_key}' failed to download ({str(e)}). Continuing without optional model.")
+                    return path
+                raise e
 
-        if allow_fallback:
-            logger.warning(f"Checkpoint '{model_key}' is missing at {path}. --allow-fallback is active; returning mock path.")
+        if allow_fallback or is_optional:
+            logger.warning(f"Checkpoint '{model_key}' is missing at {path}. (allow_fallback={allow_fallback}, optional={is_optional}). Continuing without this checkpoint.")
             return path
 
         raise RuntimeError(
-            f"\n[PRODUCTION MODE ERROR] Required model checkpoint '{model_key}' is missing!\n"
+            f"\n[PRODUCTION MODE ERROR] Required mandatory model checkpoint '{model_key}' is missing!\n"
             f"Expected path: {path}\n"
             f"Description  : {MODEL_REGISTRY.get(model_key, {}).get('description')}\n\n"
             f"STRICT LOCAL RULE ENABLED:\n"

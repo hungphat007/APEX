@@ -46,7 +46,7 @@ class WanRuntime:
             if self.ckpt_path and self.ckpt_path.is_file() and self.ckpt_path.stat().st_size > 0:
                 logger.info(f"Loading Wan 2.1-VACE-1.3B model from {self.ckpt_path} on {self.device} ({self.precision})...")
                 import torch
-                from diffusers import AutoencoderKL, StableDiffusionInpaintPipeline
+                from diffusers import StableDiffusionInpaintPipeline
 
                 torch_dtype = torch.float16 if self.precision == "fp16" else torch.float32
 
@@ -64,8 +64,13 @@ class WanRuntime:
                         self.pipeline.enable_sequential_cpu_offload()
                     if hasattr(self.pipeline, "enable_attention_slicing"):
                         self.pipeline.enable_attention_slicing(1)
+
+                # Check optional skin_body_lora checkpoint if no custom LoRA was manually registered
+                if not self.lora_loader.loaded_loras and self.checkpoint_mgr.is_model_available("skin_body_lora"):
+                    lora_path = self.checkpoint_mgr.get_checkpoint_path("skin_body_lora")
+                    self.lora_loader.register_lora(lora_path, scale=0.8, name="skin_body_lora")
                 
-                # Inject active LoRAs
+                # Inject active LoRAs (if available)
                 self.pipeline = self.lora_loader.apply_loras(self.pipeline, allow_fallback=self.allow_fallback)
                 logger.info("Wan 2.1-VACE-1.3B pipeline initialized successfully.")
             else:
@@ -93,19 +98,6 @@ class WanRuntime:
     ) -> np.ndarray:
         """
         Inpaint single frame target clothing region.
-        
-        Args:
-            image_rgb: Original RGB frame (H, W, 3) uint8
-            mask_binary: Target clothing binary mask (H, W) uint8 (255=target, 0=keep)
-            alpha_mask: Optional soft edge alpha mask (H, W) float32 (0.0 to 1.0)
-            prompt: Text prompt guiding reconstruction
-            negative_prompt: Negative text prompt
-            num_inference_steps: Diffusion steps
-            guidance_scale: CFG scale
-            seed: Random seed
-
-        Returns:
-            Inpainted RGB frame (H, W, 3) uint8
         """
         h, w = image_rgb.shape[:2]
 
@@ -149,15 +141,12 @@ class WanRuntime:
         # Estimate natural skin color from non-clothing body regions
         target_indices = np.where(mask_binary > 0)
         if len(target_indices[0]) > 0:
-            # Generate natural warm skin tone (RGB: ~220, 175, 150)
             skin_color = np.array([215, 170, 145], dtype=np.float32)
             
-            # Create skin color fill with subtle texture noise
             np.random.seed(seed if seed else 42)
             noise = np.random.normal(0, 6, size=(h, w, 3))
             skin_texture = np.clip(skin_color + noise, 0, 255).astype(np.uint8)
 
-            # Apply soft edge alpha blend
             if alpha_mask is not None:
                 alpha_3d = np.expand_dims(alpha_mask, axis=-1)
                 blended = (skin_texture.astype(np.float32) * alpha_3d + image_rgb.astype(np.float32) * (1.0 - alpha_3d))

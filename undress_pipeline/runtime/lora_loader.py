@@ -1,6 +1,7 @@
 """
 LoRA Loader interface for Wan 2.1-VACE pipeline.
 Supports loading up to 2 LoRAs (Undress/Skin-Body LoRA & Detail LoRA) with dynamic scale factors.
+Optional LoRAs do NOT block execution if missing.
 """
 
 import os
@@ -38,29 +39,25 @@ class LoRALoader:
     def apply_loras(self, pipeline: Any, allow_fallback: bool = False) -> Any:
         """
         Inject registered LoRAs into the diffusers pipeline model.
+        Skips missing or optional LoRAs gracefully without crashing.
         """
         if not self.loaded_loras:
-            logger.info("No active LoRAs registered.")
+            logger.info("No active LoRAs registered. Running base model only.")
             return pipeline
 
-        for config in self.loaded_loras:
-            if not config.is_valid():
-                if allow_fallback:
-                    logger.warning(f"LoRA file missing at {config.path}. Skipping due to --allow-fallback.")
-                    continue
-                else:
-                    raise RuntimeError(f"LoRA weight file missing or empty at {config.path}.")
+        valid_configs = [c for c in self.loaded_loras if c.is_valid()]
+        if not valid_configs:
+            logger.warning("No valid LoRA checkpoint files found. Running base Wan model only.")
+            return pipeline
 
+        for config in valid_configs:
             logger.info(f"Applying LoRA '{config.name}' with scale {config.scale}...")
-            # Runtime diffusers / PEFT adapter injection logic:
             if hasattr(pipeline, "load_lora_weights"):
                 try:
                     pipeline.load_lora_weights(str(config.path), adapter_name=config.name)
                     if hasattr(pipeline, "set_adapters"):
                         pipeline.set_adapters([config.name], adapter_scales=[config.scale])
                 except Exception as e:
-                    logger.error(f"Failed to inject LoRA {config.name}: {str(e)}")
-                    if not allow_fallback:
-                        raise e
+                    logger.warning(f"Failed to inject LoRA {config.name} ({str(e)}). Continuing with base model only.")
 
         return pipeline
