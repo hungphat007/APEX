@@ -11,7 +11,7 @@ Reconstructs target clothing regions as natural body skin while preserving **100
 | Model Key | Description | File | Size |
 | :--- | :--- | :--- | :--- |
 | `yolo11n` | Person Bounding Box Detector | `yolo11n.pt` | ~5.6 MB |
-| `schp_atr` | Self-Correction Human Parsing (ATR-18) | `exp-schp-201908261155-atr.pth` | ~204 MB |
+| `schp_atr` | Self-Correction Human Parsing (ATR-18) | `schp-atr.pth` | ~204 MB |
 | `sam2_small` | SAM2 Small Edge Refinement | `sam2_hiera_small.pt` | ~184 MB |
 | `birefnet` | BiRefNet High-Resolution Edge Refinement | `BiRefNet-general-epoch_240.pth` | ~978 MB |
 | `wan_2.1_vace_1.3b` | Wan 2.1-VACE-1.3B Masked Inpainting | `wan2.1_vace_1.3b_inpainting.safetensors` | ~2.8 GB |

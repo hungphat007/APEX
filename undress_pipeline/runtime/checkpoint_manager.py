@@ -30,9 +30,9 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "size_mb": 5.6
     },
     "schp_atr": {
-        "filename": "exp-schp-201908261155-atr.pth",
-        "repo_id": "zhengchong/SCHP",
-        "url": "https://huggingface.co/zhengchong/SCHP/resolve/main/exp-schp-201908261155-atr.pth",
+        "filename": "schp-atr.pth",
+        "repo_id": "zhengchong/Human-Toolkit",
+        "url": "https://huggingface.co/zhengchong/Human-Toolkit/resolve/main/SCHP/schp-atr.pth",
         "description": "Self-Correction Human Parsing (ATR-18)",
         "size_mb": 204.0
     },
