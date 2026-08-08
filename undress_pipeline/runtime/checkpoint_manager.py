@@ -56,10 +56,10 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "optional": False
     },
     "wan_2.1_vace_1.3b": {
-        "filename": "wan2.1_vace_1.3b_inpainting.safetensors",
-        "repo_id": "Wan-AI/Wan2.1-VACE-1.3B",
-        "url": "https://huggingface.co/Wan-AI/Wan2.1-VACE-1.3B/resolve/main/diffusion_pytorch_model.safetensors",
-        "description": "Wan 2.1-VACE-1.3B Masked Inpainting Model",
+        "filename": "Wan2.1-VACE-1.3B",
+        "repo_id": "Wan-AI/Wan2.1-VACE-1.3B-Diffusers",
+        "url": "https://huggingface.co/Wan-AI/Wan2.1-VACE-1.3B-Diffusers",
+        "description": "Wan 2.1-VACE-1.3B Masked Inpainting Model Repository",
         "size_mb": 2800.0,
         "optional": False
     },
@@ -102,12 +102,15 @@ class CheckpointManager:
         return self.checkpoint_dir / filename
 
     def is_model_available(self, model_key: str) -> bool:
-        """Check if checkpoint file exists and has non-zero size."""
+        """Check if checkpoint file/directory exists and is non-empty."""
         if model_key == "arcface":
             insightface_dir = Path.home() / ".insightface" / "models" / "buffalo_l"
             if insightface_dir.is_dir() and any(insightface_dir.iterdir()):
                 return True
+
         path = self.get_checkpoint_path(model_key)
+        if path.is_dir() and any(path.iterdir()):
+            return True
         return path.is_file() and path.stat().st_size > 0
 
     def download_model(self, model_key: str) -> Path:
@@ -122,6 +125,7 @@ class CheckpointManager:
         logger.info(f"Downloading checkpoint '{model_key}' ({info['description']}) ~{info['size_mb']}MB...")
         print(f"[CheckpointManager] Downloading '{model_key}' (~{info['size_mb']}MB) to {target_path}...")
 
+        # Special handler for InsightFace buffalo_l
         if model_key == "arcface":
             print("[CheckpointManager] Initializing InsightFace FaceAnalysis('buffalo_l') to auto-download model weights...")
             try:
@@ -133,6 +137,22 @@ class CheckpointManager:
                 return insightface_dir
             except Exception as e:
                 raise RuntimeError(f"Failed to auto-download InsightFace buffalo_l models: {str(e)}") from e
+
+        # Special handler for Wan 2.1-VACE-1.3B repo snapshot download
+        if model_key == "wan_2.1_vace_1.3b":
+            print("[CheckpointManager] Downloading Wan 2.1-VACE-1.3B Diffusers repository via Hugging Face Hub snapshot...")
+            try:
+                from huggingface_hub import snapshot_download
+                repo_id = info.get("repo_id", "Wan-AI/Wan2.1-VACE-1.3B-Diffusers")
+                snapshot_download(
+                    repo_id=repo_id,
+                    local_dir=str(target_path),
+                    local_dir_use_symlinks=False
+                )
+                print(f"[CheckpointManager] Successfully downloaded Wan 2.1-VACE-1.3B repo to {target_path}")
+                return target_path
+            except Exception as e:
+                logger.warning(f"Snapshot download failed for Wan 2.1 VACE ({str(e)}). Falling back to direct Hugging Face Hub...")
 
         # 1. Try Hugging Face Hub download if repo_id is specified
         repo_id = info.get("repo_id")
