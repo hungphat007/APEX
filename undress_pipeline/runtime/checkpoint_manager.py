@@ -58,10 +58,10 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "size_mb": 2800.0
     },
     "arcface": {
-        "filename": "glintr100.onnx",
+        "filename": "buffalo_l",
         "repo_id": "deepinsight/insightface",
-        "url": "https://huggingface.co/public-data/insightface-models/resolve/main/glintr100.onnx",
-        "description": "InsightFace ArcFace Identity Embedding Model",
+        "url": "https://github.com/deepinsight/insightface",
+        "description": "InsightFace ArcFace Identity Model (buffalo_l)",
         "size_mb": 250.0
     },
     "rife": {
@@ -94,6 +94,10 @@ class CheckpointManager:
 
     def is_model_available(self, model_key: str) -> bool:
         """Check if checkpoint file exists and has non-zero size."""
+        if model_key == "arcface":
+            insightface_dir = Path.home() / ".insightface" / "models" / "buffalo_l"
+            if insightface_dir.is_dir() and any(insightface_dir.iterdir()):
+                return True
         path = self.get_checkpoint_path(model_key)
         return path.is_file() and path.stat().st_size > 0
 
@@ -108,6 +112,18 @@ class CheckpointManager:
 
         logger.info(f"Downloading checkpoint '{model_key}' ({info['description']}) ~{info['size_mb']}MB...")
         print(f"[CheckpointManager] Downloading '{model_key}' (~{info['size_mb']}MB) to {target_path}...")
+
+        if model_key == "arcface":
+            print("[CheckpointManager] Initializing InsightFace FaceAnalysis('buffalo_l') to auto-download model weights...")
+            try:
+                from insightface.app import FaceAnalysis
+                app = FaceAnalysis(name="buffalo_l", providers=["CPUExecutionProvider"])
+                app.prepare(ctx_id=-1, det_size=(640, 640))
+                insightface_dir = Path.home() / ".insightface" / "models" / "buffalo_l"
+                print(f"[CheckpointManager] InsightFace 'buffalo_l' models ready at {insightface_dir}")
+                return insightface_dir
+            except Exception as e:
+                raise RuntimeError(f"Failed to auto-download InsightFace buffalo_l models: {str(e)}") from e
 
         # 1. Try Hugging Face Hub download if repo_id is specified
         repo_id = info.get("repo_id")

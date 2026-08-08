@@ -15,7 +15,7 @@ Reconstructs target clothing regions as natural body skin while preserving **100
 | `sam2_small` | SAM2 Small Edge Refinement | `sam2_hiera_small.pt` | ~184 MB |
 | `birefnet` | BiRefNet High-Resolution Edge Refinement | `BiRefNet.safetensors` | ~978 MB |
 | `wan_2.1_vace_1.3b` | Wan 2.1-VACE-1.3B Masked Inpainting | `wan2.1_vace_1.3b_inpainting.safetensors` | ~2.8 GB |
-| `arcface` | InsightFace ArcFace Identity Embedding | `glintr100.onnx` | ~250 MB |
+| `arcface` | InsightFace ArcFace Identity Model (buffalo_l) | `buffalo_l` (Auto) | ~250 MB |
 | `rife` | RIFE Optical Flow Motion Propagator | `flownet_rife.pth` | ~70 MB |
 | `skin_body_lora` | Skin / Body Detail LoRA | `wan_skin_body_v1.safetensors` | ~150 MB |
 
