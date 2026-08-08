@@ -65,9 +65,9 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "size_mb": 250.0
     },
     "rife": {
-        "filename": "flownet_rife.pth",
-        "repo_id": "hzwer/RIFE",
-        "url": "https://huggingface.co/hzwer/RIFE/resolve/main/flownet.pth",
+        "filename": "flownet.pkl",
+        "repo_id": "MonsterMMORPG/RIFE_4_26",
+        "url": "https://huggingface.co/MonsterMMORPG/RIFE_4_26/resolve/main/train_log/flownet.pkl",
         "description": "RIFE Optical Flow Temporal Propagator",
         "size_mb": 70.0
     },
