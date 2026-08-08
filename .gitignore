@@ -1,0 +1,39 @@
+# Python Cache & Environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.env
+
+# Model Checkpoints & Large Weights (NEVER COMMIT WEIGHTS TO GIT)
+checkpoints/
+*.pt
+*.pth
+*.safetensors
+*.bin
+*.onnx
+*.engine
+*.ckpt
+
+# Output Video & Image Artifacts
+*.mp4
+*.avi
+*.mov
+*.png
+*.jpg
+*.jpeg
+debug_mask_*
+full_video_output*
+single_frame_out*
+
+# Antigravity & IDE Temp Directories
+.system_generated/
+.pytest_cache/
+.coverage
+htmlcov/
+.idea/
+.vscode/
