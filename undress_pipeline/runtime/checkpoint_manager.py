@@ -65,10 +65,10 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "size_mb": 250.0
     },
     "rife": {
-        "filename": "flownet.pkl",
-        "repo_id": "MonsterMMORPG/RIFE_4_26",
-        "url": "https://huggingface.co/MonsterMMORPG/RIFE_4_26/resolve/main/train_log/flownet.pkl",
-        "description": "RIFE Optical Flow Temporal Propagator",
+        "filename": "rife4.26.pkl",
+        "repo_id": "DeepBeepMeep/Wan2.1",
+        "url": "https://huggingface.co/DeepBeepMeep/Wan2.1/resolve/main/rife4.26.pkl",
+        "description": "RIFE 4.26 Optical Flow Temporal Propagator",
         "size_mb": 70.0
     },
     "skin_body_lora": {
